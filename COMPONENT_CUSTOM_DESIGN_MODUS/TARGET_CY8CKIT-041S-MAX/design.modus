@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Design version="12" device_library_hint_path="../../../mtb_shared/mtb-pdl-cat2/latest-v1.X/devicesupport.xml" xmlns="http://cypress.com/xsd/cydesignfile_v3">
-    <ToolInfo version="2.2.2.3415"/>
+    <ToolInfo version="2.4.0.5940"/>
     <Devices>
         <Device mpn="CY8C4149AZI-S598">
             <BlockConfig>
@@ -635,6 +635,21 @@
                         <Param id="inFlash" value="true"/>
                     </Personality>
                 </Block>
+                <Block location="ioss[0].port[4].pin[2]">
+                    <Personality template="m0s8pin" version="1.0">
+                        <Param id="DriveModes" value="CY_GPIO_DM_ANALOG"/>
+                        <Param id="initialState" value="1"/>
+                        <Param id="vtrip" value="CY_GPIO_VTRIP_CMOS"/>
+                        <Param id="sioInputBuffer" value="true"/>
+                        <Param id="isrTrigger" value="CY_GPIO_INTR_DISABLE"/>
+                        <Param id="slewRate" value="CY_GPIO_SLEW_FAST"/>
+                        <Param id="sioOutputBuffer" value="false"/>
+                        <Param id="sioRef" value="CY_SIO_VREF_PINREF"/>
+                        <Param id="sioTrip" value=""/>
+                        <Param id="sioVoltage" value="CY_SIO_VOH_1_00"/>
+                        <Param id="inFlash" value="true"/>
+                    </Personality>
+                </Block>
                 <Block location="ioss[0].port[4].pin[4]">
                     <Personality template="m0s8pin" version="1.0">
                         <Param id="DriveModes" value="CY_GPIO_DM_ANALOG"/>
@@ -696,6 +711,21 @@
                     </Personality>
                 </Block>
                 <Block location="ioss[0].port[5].pin[0]">
+                    <Personality template="m0s8pin" version="1.0">
+                        <Param id="DriveModes" value="CY_GPIO_DM_ANALOG"/>
+                        <Param id="initialState" value="1"/>
+                        <Param id="vtrip" value="CY_GPIO_VTRIP_CMOS"/>
+                        <Param id="sioInputBuffer" value="true"/>
+                        <Param id="isrTrigger" value="CY_GPIO_INTR_DISABLE"/>
+                        <Param id="slewRate" value="CY_GPIO_SLEW_FAST"/>
+                        <Param id="sioOutputBuffer" value="false"/>
+                        <Param id="sioRef" value="CY_SIO_VREF_PINREF"/>
+                        <Param id="sioTrip" value=""/>
+                        <Param id="sioVoltage" value="CY_SIO_VOH_1_00"/>
+                        <Param id="inFlash" value="true"/>
+                    </Personality>
+                </Block>
+                <Block location="ioss[0].port[5].pin[2]">
                     <Personality template="m0s8pin" version="1.0">
                         <Param id="DriveModes" value="CY_GPIO_DM_ANALOG"/>
                         <Param id="initialState" value="1"/>
@@ -1007,6 +1037,9 @@
                         <Param id="SensorName10" value="Touchpad0_Tx13"/>
                         <Param id="SensorName11" value="Touchpad0_Tx14"/>
                         <Param id="SensorName12" value="Touchpad0_Tx15"/>
+                        <Param id="SensorName13" value=""/>
+                        <Param id="SensorName14" value=""/>
+                        <Param id="SensorName15" value=""/>
                         <Param id="CapacitorName0" value="Cmod1"/>
                         <Param id="CapacitorName1" value="Cmod2"/>
                     </Personality>
@@ -1290,13 +1323,13 @@
                     <Port name="msc[0].msc[0].s_pad[4]"/>
                 </Net>
                 <Net>
+                    <Port name="peri[0].div_16[1].clk[0]"/>
+                    <Port name="scb[0].clock[0]"/>
+                </Net>
+                <Net>
                     <Port name="msc[0].msc[0].clock_msc[0]"/>
                     <Port name="msc[1].msc[0].clock_msc[0]"/>
                     <Port name="peri[0].div_16[0].clk[0]"/>
-                </Net>
-                <Net>
-                    <Port name="peri[0].div_16[1].clk[0]"/>
-                    <Port name="scb[0].clock[0]"/>
                 </Net>
             </Netlist>
         </Device>

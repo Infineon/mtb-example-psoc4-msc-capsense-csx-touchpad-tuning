@@ -1,7 +1,7 @@
 /******************************************************************************
 * File Name: main.c
 *
-* Description: This is the source code for the MSC Multi-touch Mutual-Capacitance
+* Description: This is the source code for the PSoC 4 MSC Multi-touch Mutual-Capacitance
 * Touchpad Tuning code example for ModusToolbox.
 *
 * Related Document: See README.md
@@ -56,6 +56,10 @@
 #define CY_ASSERT_FAILED                 (0u)
 #define MSC_CAPSENSE_WIDGET_INACTIVE     (0u)
 
+#if CY_CAPSENSE_BIST_EN
+#define NUMBER_OF_TOUCHPAD_SENSORS       (26u)
+#endif
+
 /* EZI2C interrupt priority must be higher than CapSense interrupt. */
 #define EZI2C_INTR_PRIORITY              (2u)
 
@@ -64,6 +68,13 @@
 * Global Definitions
 *******************************************************************************/
 cy_stc_scb_ezi2c_context_t ezi2c_context;
+
+/* Variables for Sensor Cp measurement */
+#if CY_CAPSENSE_BIST_EN
+uint32_t sensor_id;
+uint32_t sense_cap[NUMBER_OF_TOUCHPAD_SENSORS];
+cy_en_capsense_bist_status_t measure_status[NUMBER_OF_TOUCHPAD_SENSORS];
+#endif
 
 
 /*******************************************************************************
@@ -75,7 +86,10 @@ static void capsense_msc1_isr(void);
 static void ezi2c_isr(void);
 static void initialize_capsense_tuner(void);
 static void led_control(void);
-static void configure_pump(void);
+
+#if CY_CAPSENSE_BIST_EN
+static void measure_cp(void);
+#endif
 
 
 /*******************************************************************************
@@ -114,12 +128,16 @@ int main(void)
     /* Initialize MSC CapSense */
     initialize_capsense();
 
+#if CY_CAPSENSE_BIST_EN
+    measure_cp(); /* Measure the sensor capacitance using BIST */
+#endif
+
     /* Start the first scan */
     Cy_CapSense_ScanAllSlots(&cy_capsense_context);
 
     for (;;)
     {
-        if(CY_CAPSENSE_NOT_BUSY == Cy_CapSense_IsBusy(&cy_capsense_context))
+        if (CY_CAPSENSE_NOT_BUSY == Cy_CapSense_IsBusy(&cy_capsense_context))
         {
             /* Process all widgets */
             Cy_CapSense_ProcessAllWidgets(&cy_capsense_context);
@@ -166,13 +184,10 @@ static void initialize_capsense(void)
         .intrPriority = CAPSENSE_MSC1_INTR_PRIORITY,
     };
 
-    /* Configure the pump circuit for CapSense operation */
-    configure_pump();
-
     /* Capture the MSC HW block and initialize it to the default state. */
     status = Cy_CapSense_Init(&cy_capsense_context);
 
-    if(status != CY_CAPSENSE_STATUS_SUCCESS)
+    if (status != CY_CAPSENSE_STATUS_SUCCESS)
     {
         /* CapSense initialization failed, the middleware may not operate
          * as expected, and repeating of initialization is required.*/
@@ -191,11 +206,11 @@ static void initialize_capsense(void)
         NVIC_ClearPendingIRQ(capsense_msc1_interrupt_config.intrSrc);
         NVIC_EnableIRQ(capsense_msc1_interrupt_config.intrSrc);
 
-       /* Initialize the CapSense firmware modules. */
+        /* Initialize the CapSense firmware modules. */
         status = Cy_CapSense_Enable(&cy_capsense_context);
     }
 
-    if(status != CY_CAPSENSE_STATUS_SUCCESS)
+    if (status != CY_CAPSENSE_STATUS_SUCCESS)
     {
         /* This status could fail before tuning the sensors correctly.
          * Ensure that this function passes after the CapSense sensors are tuned
@@ -251,7 +266,7 @@ static void initialize_capsense_tuner(void)
     /* Initialize the EzI2C firmware module */
     status = Cy_SCB_EZI2C_Init(CYBSP_EZI2C_HW, &CYBSP_EZI2C_config, &ezi2c_context);
 
-    if(status != CY_SCB_EZI2C_SUCCESS)
+    if (status != CY_SCB_EZI2C_SUCCESS)
     {
         CY_ASSERT(CY_ASSERT_FAILED);
     }
@@ -281,7 +296,7 @@ static void initialize_capsense_tuner(void)
 *******************************************************************************/
 static void led_control(void)
 {
-    if(MSC_CAPSENSE_WIDGET_INACTIVE != Cy_CapSense_IsWidgetActive(CY_CAPSENSE_TOUCHPAD0_WDGT_ID, &cy_capsense_context))
+    if (MSC_CAPSENSE_WIDGET_INACTIVE != Cy_CapSense_IsWidgetActive(CY_CAPSENSE_TOUCHPAD0_WDGT_ID, &cy_capsense_context))
     {
         Cy_GPIO_Write(CYBSP_USER_LED_PORT, CYBSP_USER_LED_NUM, CYBSP_LED_STATE_ON);
     }
@@ -290,6 +305,7 @@ static void led_control(void)
         Cy_GPIO_Write(CYBSP_USER_LED_PORT, CYBSP_USER_LED_NUM, CYBSP_LED_STATE_OFF);
     }
 }
+
 
 /*******************************************************************************
 * Function Name: ezi2c_isr
@@ -304,40 +320,28 @@ static void ezi2c_isr(void)
 }
 
 
-/*******************************************************************************
-* Function Name: configure_pump
-********************************************************************************
-* Summary:
-* Configure the pump circuit for CapSense operation. Pump needs to be enabled
-* when VDDA <= 4.0V. This is a workaround and it will be addressed in future
-* releases of PDL (CY_ID: 4762)
-*
-*******************************************************************************/
-static void configure_pump(void)
-{
-#define CY_PUMP_VDDA_VOLTAGE_MV (4000u)
+#if CY_CAPSENSE_BIST_EN
 
-#if (defined (srss_0_power_0_ENABLED)) && (srss_0_power_0_ENABLED == 1)
-    if (CY_PUMP_VDDA_VOLTAGE_MV >= CY_CFG_PWR_VDDA_MV)
+/*******************************************************************************
+ * Function Name: measure_cp
+ ********************************************************************************
+ * Summary:
+ * Measures the sensor capacitance of the Tx and Rx electrodes to determine Tx 
+ * clock frequency. The measured sensor capacitance (Cp) values are stored in 
+ * the array 'sense_cap[x]', where x is the sensor number.
+ *
+ *******************************************************************************/
+static void measure_cp(void)
+{
+    for (sensor_id = CY_CAPSENSE_TOUCHPAD0_SNS0_ID; sensor_id < NUMBER_OF_TOUCHPAD_SENSORS; sensor_id++)
     {
-        /* SRSSLT register write to use main IMO output for pump */
-        SRSSLT_CLK_SELECT |= (1u << SRSSLT_CLK_SELECT_PUMP_SEL_Pos);
-        /* Setting Up the pump in HSIOM */
-        HSIOM->PUMP_CTL |= (1u << HSIOM_PUMP_CTL_ENABLED_Pos);
+        measure_status[sensor_id] = Cy_CapSense_MeasureCapacitanceSensorElectrode(
+                                    CY_CAPSENSE_TOUCHPAD0_WDGT_ID,
+                                    sensor_id, &cy_capsense_context);
+        sense_cap[sensor_id] = cy_capsense_context.ptrWdConfig[CY_CAPSENSE_TOUCHPAD0_WDGT_ID].ptrEltdCapacitance[sensor_id];
     }
-    else
-    {
-        /* SRSSLT register write to default */
-        SRSSLT_CLK_SELECT &= ~(SRSSLT_CLK_SELECT_PUMP_SEL_Msk);
-        /* HSIOM register write to default */
-        HSIOM->PUMP_CTL &= ~(HSIOM_PUMP_CTL_ENABLED_Msk);
-    }
-#else
-        /* If the below error is thrown during build and compile. Enable and
-         * specify VDDA in Power settings on the Device Configurator. For more
-         * details refer to readme.md */
-#error *** Configure VDDA in power settings ***;
-#endif
 }
+
+#endif
 
 /* [] END OF FILE */
