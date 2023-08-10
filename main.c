@@ -65,7 +65,7 @@
 
 
 /*******************************************************************************
-* Global Definitions
+* Global Variables
 *******************************************************************************/
 cy_stc_scb_ezi2c_context_t ezi2c_context;
 
@@ -279,7 +279,7 @@ static void initialize_capsense_tuner(void)
      * the Tuner or the Bridge Control Panel can read this buffer but you can
      * connect only one tool at a time.
      */
-    Cy_SCB_EZI2C_SetBuffer1(CYBSP_EZI2C_HW, (uint8 *)&cy_capsense_tuner,
+    Cy_SCB_EZI2C_SetBuffer1(CYBSP_EZI2C_HW, (uint8_t *)&cy_capsense_tuner,
                             sizeof(cy_capsense_tuner), sizeof(cy_capsense_tuner),
                             &ezi2c_context);
 
